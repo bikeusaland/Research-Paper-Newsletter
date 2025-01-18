@@ -1,4 +1,4 @@
-# Quant Newsletter Generator
+# Research Paper Newsletter Generator
 
 A Python application that fetches, summarizes, and emails daily ArXiv papers. The application is designed to run as a Google Cloud Function triggered by Cloud Scheduler, or run locally.
 
