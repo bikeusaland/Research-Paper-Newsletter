@@ -41,9 +41,8 @@ def extract_pdf_content(pdf_url: str) -> str:
         print(f"Error extracting PDF content: {e}")
         return ""
 
-def setup_papers_dir() -> str:
+def setup_papers_dir(papers_dir: str = "papers") -> str:
     """Creates/cleans papers directory"""
-    papers_dir = "papers"
     if os.path.exists(papers_dir):
         shutil.rmtree(papers_dir)
     os.makedirs(papers_dir)
@@ -51,8 +50,8 @@ def setup_papers_dir() -> str:
     print(f"Directory is writable: {os.access(papers_dir, os.W_OK)}")
     return papers_dir
 
-def get_new_papers(url: str) -> List[Article]:
-    papers_dir = setup_papers_dir()
+def get_new_papers(url: str, papers_dir: str = "papers") -> List[Article]:
+    papers_dir = setup_papers_dir(papers_dir)
     
     try:
         response = requests.get(url)
@@ -133,7 +132,7 @@ def get_new_papers(url: str) -> List[Article]:
                 
                 if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
                     logging.info(f"Successfully saved {filename}")
-                    relative_path = os.path.join('papers', filename)
+                    relative_path = filepath
                 else:
                     logging.error(f"Failed to save {filename}")
                     continue
@@ -143,7 +142,7 @@ def get_new_papers(url: str) -> List[Article]:
                     pdf_link=pdf_link,
                     abstract_link=abstract_link,
                     article_id=article_id,
-                    pdf_content=relative_path  # Using pdf_content instead of local_path
+                    pdf_content=relative_path
                 )
                 
                 articles.append(article)
