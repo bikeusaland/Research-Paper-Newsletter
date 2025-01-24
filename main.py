@@ -127,8 +127,8 @@ if __name__ == "__main__":
     parser.add_argument('--pdfs', type=str, help='Path to folder containing PDF files to process')
     parser.add_argument('--papers', type=str, help='Override default papers directory for downloads', default="papers")
     parser.add_argument('--output', type=str, help='Path for the output HTML summary', default="finalSummary.html")
-    parser.add_argument('--llm', choices=['local', 'openai', 'ollama'], default='local',
-                      help='Choose LLM backend: local (LM Studio), openai, or ollama')
+    parser.add_argument('--llm', choices=['local', "fuelix", 'openai', 'ollama'], default='local',
+                      help='Choose LLM backend: local (LM Studio), fuelix, openai, or ollama')
     args = parser.parse_args()
 
     # For local testing, set environment variables

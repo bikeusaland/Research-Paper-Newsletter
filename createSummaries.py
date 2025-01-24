@@ -37,11 +37,16 @@ def create_summaries(articles: List[Article], use_openai: bool = False, llm: str
     """Generate summaries for articles using specified LLM"""
     
     # Set default URLs if environment variables are not set
+    fuelix_api_url = os.getenv('FUELIX_API_URL', 'https://proxy.fuelix.com')
+    fuelix_api_key = os.getenv('FUELIX_API_KEY', '')
+    fuelix_model = os.getenv('FUELIX_MODEL', '')
     ollama_api_url = os.getenv('OLLAMA_API_URL', 'http://localhost:11434/api/chat')
     ollama_model = os.getenv('OLLAMA_MODEL', 'mistral')
     lm_studio_api_url = os.getenv('LM_STUDIO_API_URL', 'http://localhost:1234/v1')
-    
-    logging.info(f"Model: {ollama_model}")
+    openai_model = os.getenv('OPENAI_MODEL', 'gpt-4-mini')
+    openai_api_key = os.getenv('OPENAI_API_KEY', '')
+
+
     system_prompt = """You are a research assistant that provides concise summaries of academic papers.
     Focus on:
     1. Key findings and contributions
@@ -64,11 +69,12 @@ def create_summaries(articles: List[Article], use_openai: bool = False, llm: str
                 logging.info(f"First 100 chars of extracted text: {pdf_text[:100]}")
             
             if llm == 'openai':
+                logging.info(f"Model: {openai_model}")
                 # Use OpenAI API
                 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
                 try:
                     response = client.chat.completions.create(
-                        model="gpt-4-mini",
+                        model=openai_model,
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": f"""Please summarize this paper:
@@ -84,6 +90,7 @@ def create_summaries(articles: List[Article], use_openai: bool = False, llm: str
                     logging.error(f"Error calling OpenAI API: {str(e)}")
                     article.summary = ""
             elif llm == 'ollama':
+                logging.info(f"Model: {ollama_model}")
                 # Use Ollama
                 headers = {"Content-Type": "application/json"}
                 payload = {
@@ -110,6 +117,28 @@ def create_summaries(articles: List[Article], use_openai: bool = False, llm: str
                 except requests.exceptions.RequestException as e:
                     logging.error(f"Error calling Ollama API: {str(e)}")
                     article.summary = ""
+            elif llm == 'fuelix':
+                logging.info(f"Model: {fuelix_model}")
+                client = OpenAI(api_key=fuelix_api_key,
+                                base_url="https://proxy.fuelix.ai")
+                try:
+                    response = client.chat.completions.create(
+                        model=fuelix_model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": f"""Please summarize this paper:
+                            Title: {article.title}
+                            Content: {pdf_text}"""}
+                        ],
+                        temperature=0.3,
+                        max_tokens=1000
+                    )
+                    article.summary = response.choices[0].message.content
+                    logging.info(f"Generated summary using FuelIX for: {article.title}")
+                except Exception as e:
+                    logging.error(f"Error calling FuelIX API: {str(e)}")
+                    article.summary = ""
+                    
             else:
                 # Use local LM Studio
                 headers = {"Content-Type": "application/json"}
