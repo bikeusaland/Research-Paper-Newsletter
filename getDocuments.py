@@ -41,18 +41,17 @@ def extract_pdf_content(pdf_url: str) -> str:
         print(f"Error extracting PDF content: {e}")
         return ""
 
-def setup_papers_dir() -> str:
-    """Creates/cleans papers directory"""
-    papers_dir = "papers"
-    if os.path.exists(papers_dir):
-        shutil.rmtree(papers_dir)
-    os.makedirs(papers_dir)
-    print(f"Created papers dir at: {os.path.abspath(papers_dir)}")
-    print(f"Directory is writable: {os.access(papers_dir, os.W_OK)}")
-    return papers_dir
+def setup_documents_dir(documents_dir: str = "documents") -> str:
+    """Creates/cleans documents directory"""
+    if os.path.exists(documents_dir):
+        shutil.rmtree(documents_dir)
+    os.makedirs(documents_dir)
+    print(f"Created documents dir at: {os.path.abspath(documents_dir)}")
+    print(f"Directory is writable: {os.access(documents_dir, os.W_OK)}")
+    return documents_dir
 
-def get_new_papers(url: str) -> List[Article]:
-    papers_dir = setup_papers_dir()
+def get_new_documents(url: str, documents_dir: str = "documents") -> List[Article]:
+    documents_dir = setup_documents_dir(documents_dir)
     
     try:
         response = requests.get(url)
@@ -83,7 +82,7 @@ def get_new_papers(url: str) -> List[Article]:
                 # Clean article_id by removing "arXiv:" prefix
                 article_id = article_id.replace('arXiv:', '')
                 filename = f"{article_id}.pdf"
-                filepath = os.path.join(papers_dir, filename)
+                filepath = os.path.join(documents_dir, filename)
                 
                 # Download PDF with proper headers
                 headers = {
@@ -133,7 +132,7 @@ def get_new_papers(url: str) -> List[Article]:
                 
                 if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
                     logging.info(f"Successfully saved {filename}")
-                    relative_path = os.path.join('papers', filename)
+                    relative_path = filepath
                 else:
                     logging.error(f"Failed to save {filename}")
                     continue
@@ -143,7 +142,7 @@ def get_new_papers(url: str) -> List[Article]:
                     pdf_link=pdf_link,
                     abstract_link=abstract_link,
                     article_id=article_id,
-                    pdf_content=relative_path  # Using pdf_content instead of local_path
+                    pdf_content=relative_path
                 )
                 
                 articles.append(article)
@@ -155,8 +154,8 @@ def get_new_papers(url: str) -> List[Article]:
         return articles
         
     except Exception as e:
-        logging.error(f"Error fetching papers: {str(e)}")
+        logging.error(f"Error fetching documents: {str(e)}")
         return []
 
-print(f"Papers directory exists: {os.path.exists('papers')}")
+print(f"Documents directory exists: {os.path.exists('documents')}")
 print(f"Current working directory: {os.getcwd()}")

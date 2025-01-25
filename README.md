@@ -1,20 +1,22 @@
 # Research Paper Newsletter Generator
 
-A Python application that fetches, summarizes, and emails daily ArXiv papers. The application is designed to run as a Google Cloud Function triggered by Cloud Scheduler, or run locally.
+A Python application that fetches, summarizes, and emails daily ArXiv papers using various LLM backends. The application can run locally or as a Google Cloud Function triggered by Cloud Scheduler.
+
+## Features
+
+- Fetches latest papers from ArXiv
+- Supports multiple LLM backends for paper summarization:
+  - OpenAI (default)
+  - Local LM Studio
+  - Ollama
+  - FuelIX
+- Generates HTML email summaries
+- Supports local PDF processing
+- Debug mode for detailed logging
 
 ## Prerequisites
 
-1. Google Cloud Platform Account
-   - Create an account at https://console.cloud.google.com
-   - Create a new project or select an existing one
-   - Enable billing for your project
-
-2. Required Google Cloud APIs
-   - Cloud Functions API
-   - Cloud Scheduler API
-   - Cloud Build API
-
-3. Gmail Account - REQUIRED FOR EMAIL SENDING VIA GMAIL
+1. Gmail Account (Required for email sending)
    - Enable 2-Step Verification at https://myaccount.google.com/security
    - Generate an App Password:
      1. Go to Google Account settings
@@ -23,28 +25,49 @@ A Python application that fetches, summarizes, and emails daily ArXiv papers. Th
      4. Select "Mail" for app and your device type
      5. Click "Generate" and save the 16-character password
 
-4. Local Development Setup
+2. LLM Backend (Choose at least one)
+   - OpenAI API key (default option)
+   - Local LM Studio installation
+   - Ollama installation
+   - FuelIX API key
+
+3. Local Development Setup
    - Python 3.12 or later
    - Git (for version control)
-   - Google Cloud CLI (optional, for command-line deployment)
+   - Google Cloud CLI (optional, for cloud deployment)
 
 ## Project Structure
 
 ```
 Research-Paper-Newsletter/
-├── main.py                 # Cloud Function entry point
-├── createEmailSummary.py   # HTML email template generator
-├── createSummaries.py      # Paper summary generator
-├── getPapers.py           # ArXiv paper fetcher
-└── requirements.txt       # Python dependencies
+├── main.py                # Main script and Cloud Function entry point
+├── createEmailSummary.py  # HTML email template generator
+├── createSummaries.py     # Paper summary generator with LLM support
+├── getPapers.py          # ArXiv paper fetcher
+├── requirements.txt      # Python dependencies
+├── .env.template        # Environment variables template
+└── README.md           # This file
 ```
 
-## Local Testing
+## Command Line Arguments
+
+```bash
+python main.py [options]
+
+Options:
+  --pdfs PATH     Path to folder containing PDF files to process (if using local PDF's)
+  --papers PATH   Override default papers directory for downloads (default: papers)
+  --output PATH   Path for the output HTML summary (default: finalSummary.html)
+  --llm BACKEND   Choose LLM backend: local, fuelix, openai, or ollama (default: openai)
+  --debug         Enable debug logging
+```
+
+## Local Setup and Usage
 
 1. Clone the repository:
    ```bash
    git clone [your-repo-url]
-   cd QuantNewsletter
+   cd Research-Paper-Newsletter
    ```
 
 2. Install dependencies:
@@ -58,15 +81,25 @@ Research-Paper-Newsletter/
    cp .env.template .env
    
    # Edit .env with your credentials
-   # NEVER commit the .env file to version control
+   # See .env.template for all available options
    ```
 
 4. Run the script:
    ```bash
+   # Basic usage (uses OpenAI by default)
    python main.py
+
+   # Process local PDFs
+   python main.py --pdfs /path/to/pdfs
+
+   # Use different LLM backend
+   python main.py --llm ollama
+
+   # Enable debug logging
+   python main.py --debug
    ```
 
-## Google Cloud Deployment
+## Cloud Deployment
 
 1. **Create Cloud Function**
    - Go to Google Cloud Console > Cloud Functions
@@ -80,12 +113,13 @@ Research-Paper-Newsletter/
      * Timeout: 60 seconds (adjust if needed)
 
 2. **Set Environment Variables**
-   - In the Cloud Function configuration, add these environment variables:
+   - In the Cloud Function configuration, add required variables from .env.template
+   - At minimum, you need:
      ```
      SENDER_EMAIL=your-gmail@gmail.com
      SENDER_PASSWORD=your-gmail-app-password
      RECEIVER_EMAIL=recipient@example.com
-     ARXIV_URL=https://arxiv.org/list/cs.AI/new
+     OPENAI_API_KEY=your-openai-api-key  # If using OpenAI (default)
      ```
 
 3. **Deploy Code**
@@ -97,7 +131,7 @@ Research-Paper-Newsletter/
      * Deploy directly from source
    - Option 3: Command Line (with Google Cloud CLI)
      ```bash
-     gcloud functions deploy quant-newsletter \
+     gcloud functions deploy research-paper-newsletter \
        --runtime python312 \
        --trigger-http \
        --entry-point cloud_function \
@@ -114,46 +148,69 @@ Research-Paper-Newsletter/
      * Target type: HTTP
      * URL: [Your Cloud Function's trigger URL]
      * HTTP method: POST
-     * Auth header: Add if you enabled authentication
 
 ## Troubleshooting
 
-1. **Email Issues**
+1. **LLM Backend Issues**
+   - OpenAI:
+     * Verify API key is correct
+     * Check API usage limits
+   - Local LM Studio:
+     * Ensure LM Studio is running
+     * Verify API URL is correct
+   - Ollama:
+     * Ensure Ollama is running
+     * Check if model is installed
+   - FuelIX:
+     * Verify API key is correct
+     * Check API endpoint URL
+
+2. **Email Issues**
    - Verify Gmail App Password is correct
    - Check if 2-Step Verification is enabled
-   - Review Cloud Function logs for SMTP errors
+   - Review logs for SMTP errors
 
-2. **Cloud Function Errors**
+3. **Cloud Function Errors**
    - Check function logs in Cloud Console
    - Verify environment variables are set
    - Ensure all dependencies are in requirements.txt
 
-3. **Scheduler Issues**
+4. **Debug Mode**
+   - Run with --debug flag for detailed logs:
+     ```bash
+     python main.py --debug
+     ```
+   - Check logs for API responses and error messages
+   - Verify environment variables are set correctly
+
+5. **Scheduler Issues**
    - Verify cron syntax
    - Check scheduler logs
    - Ensure function URL is correct
 
 ## Security Notes
 
-- Never commit sensitive information (passwords, API keys) to version control
-- The .gitignore file is configured to prevent committing sensitive files
-- Use .env file locally for environment variables (copy from .env.template)
+- Never commit sensitive information (API keys, passwords) to version control
+- Use .env file locally for environment variables
 - For production:
-  - Use Google Cloud Secret Manager to store sensitive data
-  - Regularly rotate credentials (Gmail App Password, API keys)
-  - Monitor Cloud Function logs for unauthorized access attempts
-  - Consider implementing rate limiting
-  - Use minimum required permissions for service accounts
+  - Use Google Cloud Secret Manager for sensitive data
+  - Regularly rotate credentials
+  - Monitor logs for unauthorized access
+  - Keep dependencies updated
+  - Use HTTPS endpoints only
 - Security best practices:
-  - Don't share or expose your Gmail App Password
-  - Don't share or expose your OpenAI API key
-  - Keep your Python dependencies updated for security patches
-  - Review Cloud Function security settings (e.g., HTTPS only)
+  - Don't share API keys or passwords
+  - Use minimum required permissions
+  - Implement rate limiting where possible
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
+3. Make your changes
+4. Add/update tests if applicable
 5. Create a Pull Request
+
+## License
+
+MIT License - See LICENSE file for details
