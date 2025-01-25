@@ -1,20 +1,36 @@
-from getPapers import get_new_papers
-from createSummaries import create_summaries, Article
 import logging
-from typing import List
+import argparse
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Parse arguments first to set up logging before any imports
+parser = argparse.ArgumentParser(description='Process ArXiv papers or local PDFs')
+parser.add_argument('--pdfs', type=str, help='Path to folder containing PDF files to process')
+parser.add_argument('--documents', type=str, help='Override default documents directory for downloads', default="documents")
+parser.add_argument('--output', type=str, help='Path for the output HTML summary', default="finalSummary.html")
+parser.add_argument('--llm', choices=['local', "fuelix", 'openai', 'ollama'], default='openai',
+                  help='Choose LLM backend: local (LM Studio), fuelix, openai, or ollama')
+parser.add_argument('--debug', action='store_true', help='Enable debug logging')
+args = parser.parse_args()
+
+# Configure logging before any imports
+logging.basicConfig(
+    level=logging.DEBUG if args.debug else logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+from getDocuments import get_new_documents
+from createSummaries import create_summaries, Article
+from typing import List
 from datetime import datetime
 from createEmailSummary import create_email_summary
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import argparse
 import glob
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 
 def process_local_pdfs(pdf_folder: str) -> List[Article]:
     """Process PDFs from a local folder"""
@@ -46,22 +62,22 @@ def process_local_pdfs(pdf_folder: str) -> List[Article]:
             
     return articles
 
-def process_papers(url: str) -> List[Article]:
-    """Main function to fetch and process papers"""
+def process_documents(url: str) -> List[Article]:
+    """Main function to fetch and process documents"""
     try:
-        papers = get_new_papers(url)
-        logging.info(f"Found {len(papers)} papers")
+        documents = get_new_documents(url)
+        logging.info(f"Found {len(documents)} documents")
         
-        for paper in papers:
-            logging.info(f"\nProcessing: {paper.title}")
-            print(f"Title: {paper.title}")
-            print(f"PDF Link: {paper.pdf_link}")
-            print(f"Abstract: {paper.abstract_link}")
-            print(f"Content: {paper.pdf_content}")
+        for document in documents:
+            logging.info(f"\nProcessing: {document.title}")
+            print(f"Title: {document.title}")
+            print(f"PDF Link: {document.pdf_link}")
+            print(f"Abstract: {document.abstract_link}")
+            print(f"Content: {document.pdf_content}")
             print("-" * 80)
-        return papers
+        return documents
     except Exception as e:
-        logging.error(f"Error processing papers: {e}")
+        logging.error(f"Error processing documents: {e}")
         raise
 
 def send_email(html_content: str) -> None:
@@ -91,9 +107,9 @@ def send_email(html_content: str) -> None:
         raise
 
 def process_and_send_summary(url: str) -> None:
-    """Process papers and send email summary"""
+    """Process documents and send email summary"""
     try:
-        newArticles = process_papers(url)
+        newArticles = process_documents(url)
         if not newArticles:
             logging.warning("No articles found to process")
             return
@@ -123,13 +139,6 @@ def cloud_function(event, context):
         raise Exception(error_msg)  # Cloud Functions will mark as failed
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process ArXiv papers or local PDFs')
-    parser.add_argument('--pdfs', type=str, help='Path to folder containing PDF files to process')
-    parser.add_argument('--papers', type=str, help='Override default papers directory for downloads', default="papers")
-    parser.add_argument('--output', type=str, help='Path for the output HTML summary', default="finalSummary.html")
-    parser.add_argument('--llm', choices=['local', "fuelix", 'openai', 'ollama'], default='local',
-                      help='Choose LLM backend: local (LM Studio), fuelix, openai, or ollama')
-    args = parser.parse_args()
 
     # For local testing, set environment variables
     if not os.environ.get('SENDER_EMAIL'):
@@ -162,7 +171,7 @@ if __name__ == "__main__":
             def cloud_function_with_papers_dir(event, context):
                 try:
                     arxiv_url = os.environ.get('ARXIV_URL', "https://arxiv.org/list/cs.AI/new")
-                    newArticles = get_new_papers(arxiv_url, args.papers)
+                    newArticles = get_new_documents(arxiv_url, args.documents)
                     if not newArticles:
                         logging.warning("No articles found to process")
                         return

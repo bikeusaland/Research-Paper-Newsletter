@@ -1,7 +1,7 @@
 # createEmailSummary.py
 from datetime import datetime
 from typing import List
-from getPapers import Article
+from getDocuments import Article
 
 def create_email_summary(articles: List[Article], pdf_folder: str = None, output_path: str = "finalSummary.html") -> str:
     """Create formatted HTML summary of articles"""
